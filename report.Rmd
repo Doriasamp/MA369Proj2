@@ -146,6 +146,9 @@ table(KM3$cluster)
 # I used 2 clusters because I think 2 is better but you can change it of course
 # lets append an extra column for cluster label to original dataset
 skull_data$cluster = KM2$cluster
+cluster1 = skull_data[skull_data$cluster == 1, c(1,2,3,4,6)]
+cluster1
+summary(cluster1)
 
 
 
