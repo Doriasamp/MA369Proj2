@@ -1,0 +1,152 @@
+---
+title: "report"
+author: "Huey, Dewey, Louie"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+#read in data and print structure
+skull_data = read.table("EgyptianSkull.dat")
+str(skull_data)
+summary(skull_data)
+```
+
+```{r}
+#Problem Statement 1: [25 points] Perform multivariate normality test of the quantitative variables
+#based on all data using Henze-Zirkler's method at 1% level of significance. Also, report the Chi-Square
+#Q-Q Plot to show the multivariate outliers. Note: Be mindful in specifying different arguments in the "mvn"
+#function.
+require(MVN)
+mvnTest = mvn(skull_data[,1:4], mvnTest = "hz")
+mvnTest$multivariateNormality
+
+#H0: data follows MVN, H1: data is not MVN
+#at 1% significance level, we fail to reject H0, and cannot conclude that the data is not multivariate normal.
+
+#chi square qq plot to show multivariate outliers
+par(mfrow=c(1,1))
+result = mvn(data = skull_data, subset = "V5", 
+             multivariatePlot="qq",
+             multivariateOutlierMethod="quan",
+             showOutliers = TRUE,
+             showNewData = TRUE)
+```
+
+
+```{r}
+#Problem Statement 2: [25 points] Construct a one-way MANOVA of the Egyptian skull data using
+#Pillai's method. Use alpha = .05. If MANOVA is found to be significant, determine which mean components
+#differ among the populations represented by the three time periods at 5% level of significance considering
+#the homogeneity of covariance matrices.
+X = as.matrix(skull_data[,c("V1", "V2", "V3", "V4")])
+V5_fac = factor(skull_data$V5) #creates 3 groups
+skull_fit = manova(X ~ V5_fac)
+summary(skull_fit)
+#manova was found to be significant, so now do univariate analysis on each variable
+
+summary.aov(skull_fit)
+#univariate anova found that V1 and V3 are significantly different at the 5% level
+#means that all 4 variables differ significantly among the 3 different time periods
+
+# Question: does this adequately consider the homogeneity of covariance matrices?
+
+#### ANDREA ANSWER #####
+
+# We need to use Box's M-test for homogeneity of Covariance Matrices
+# H0: sigma_matrix1 = sigma_matrix2 = sigma_matrix3
+library(biotools)
+boxM(X, V5_fac)
+# P-val = 0.4 > 0.05, so we fail to reject H0
+# At 5% sig lev there is not enough evidence to conclude that there is no omogeneity
+# of covariance matrices, hence our previous MANOVA results are valid
+
+#### END ANDREA ANSWER #####
+```
+
+```{r}
+
+#Problem Statement 3: [25 points] Perform the PCA on the quantitative part of the data. Interpret the first
+#two principal components. Report the scree plot and suggest the number of principal components would
+#be sufficient to have at least 85% of the variability explained.
+skull_pca = prcomp(skull_data[,1:4], center = T, scale = T)
+PHI = skull_pca$rotation
+PHI
+#we see that PC1 is a good representation of V1 and V4; PC2 is a good representation of V3; PC3 is a good representation of V2
+pc.var = skull_pca$sdev^2
+PVE = (pc.var / sum(pc.var)) * 100
+PVE
+cumsum(PVE)
+#around 59% of the variation is explained by only 2 PC's
+#scree plot
+plot(1:4, PVE, xlab="PC's", ylab="PVE", type="b", ylim = c(0,100))
+#to achieve at least 85% of the variability explained, we must include all 4 predictor variables, V1, V2, V3 and V4.
+```
+
+```{R}
+#Problem Statement 4: [25 points] Perform k-mean clustering method on the quantitative part of the
+#data with k = 1, 2, . . . , 5. Construct a scree plot of k vs. Total Within Cluster SS and suggest the optimum
+#number of clusters. Based on suggested optimum number of clusters, construct a table to show the number
+#of multivariate observations in each cluster. Print the observation numbers that belong to the first cluster
+#only.
+
+#Apply k-means clustering (use k=1 cluster)
+KM1 = kmeans(skull_data[,1:4], centers = 1, nstart = 20)
+#get different SS
+WCSS1 = KM1$withinss
+TWCSS1 = KM1$tot.withinss
+BCSS1 = KM1$betweenss
+
+#Apply k-means clustering (use k=2 clusters)
+KM2 = kmeans(skull_data[,1:4], centers = 2, nstart = 20)
+#get different SS
+WCSS2 = KM2$withinss
+TWCSS2 = KM2$tot.withinss
+BCSS2 = KM2$betweenss
+
+#Apply k-means clustering (use k=3 cluster)
+KM3 = kmeans(skull_data[,1:4], centers = 3, nstart = 20)
+#get different SS
+WCSS3 = KM3$withinss
+TWCSS3 = KM3$tot.withinss
+BCSS3 = KM3$betweenss
+
+#Apply k-means clustering (use k=4 cluster)
+KM4 = kmeans(skull_data[,1:4], centers = 4, nstart = 20)
+#get different SS
+WCSS4 = KM4$withinss
+TWCSS4 = KM4$tot.withinss
+BCSS4 = KM4$betweenss
+
+#Apply k-means clustering (use k=5 cluster)
+KM5 = kmeans(skull_data[,1:4], centers = 5, nstart = 20)
+#get different SS
+WCSS5 = KM5$withinss
+TWCSS5 = KM5$tot.withinss
+BCSS5 = KM5$betweenss
+
+#scree plot of K vs TWCSS
+TWCSS = c(TWCSS1, TWCSS2, TWCSS3, TWCSS4, TWCSS5)
+K=1:5
+plot(K, TWCSS, type="b")
+#it appears that the optimal number of clusters is K=2 or 3 (I would say 3--it really starts to level off after that...)
+
+#table with number of observations in each cluster, with only the first cluster printed
+table(KM3$cluster)
+
+#figure out how to print observations only in first cluster, and NOT the table above!
+
+#### ANDREA ANSWER ####
+# I used 2 clusters because I think 2 is better but you can change it of course
+# lets append an extra column for cluster label to original dataset
+skull_data$cluster = KM2$cluster
+
+
+
+```
